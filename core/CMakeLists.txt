@@ -1,4 +1,5 @@
 add_library(thumbbuddy_core)
+add_library(ThumbBuddy::core ALIAS thumbbuddy_core)
 
 target_sources(
         thumbbuddy_core
@@ -7,10 +8,15 @@ target_sources(
         src/ThumbnailGenerator.cpp
 )
 
-target_include_directories(
+target_sources(
         thumbbuddy_core
         PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        FILE_SET HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
+        FILES
+        include/thumbbuddy/FrameCandidate.h
+        include/thumbbuddy/FrameAnalyzer.h
+        include/thumbbuddy/ThumbnailGenerator.h
 )
 
 target_compile_features(

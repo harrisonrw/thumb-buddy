@@ -6,5 +6,5 @@ add_executable(
 target_link_libraries(
         thumbbuddy
         PRIVATE
-        thumbbuddy_core
+        ThumbBuddy::core
 )
