@@ -1,0 +1,12 @@
+# CLion / JetBrains
+.idea/
+
+# CMake
+cmake-build-*/
+build/
+
+# macOS
+.DS_Store
+
+# Generated output
+output/

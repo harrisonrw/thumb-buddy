@@ -1,0 +1,8 @@
+//
+// Created by Robert Harrison on 8/23/26.
+//
+
+#ifndef THUMB_BUDDY_THUMBNAILGENERATOR_H
+#define THUMB_BUDDY_THUMBNAILGENERATOR_H
+
+#endif //THUMB_BUDDY_THUMBNAILGENERATOR_H
