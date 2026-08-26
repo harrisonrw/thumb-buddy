@@ -2,7 +2,11 @@
 // Created by Robert Harrison on 8/23/26.
 //
 
-#ifndef THUMB_BUDDY_FRAMEANALYZER_H
-#define THUMB_BUDDY_FRAMEANALYZER_H
+#ifndef THUMBBUDDY_FRAMEANALYZER_H
+#define THUMBBUDDY_FRAMEANALYZER_H
 
-#endif //THUMB_BUDDY_FRAMEANALYZER_H
+namespace thumbbuddy {
+
+}
+
+#endif //THUMBBUDDY_FRAMEANALYZER_H
