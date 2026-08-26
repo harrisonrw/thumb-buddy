@@ -1,5 +1,7 @@
 # CLion / JetBrains
-.idea/
+.idea/*
+# unignore the templates
+!.idea/fileTemplates
 
 # CMake
 cmake-build-*/
