@@ -1,0 +1,14 @@
+//
+// Created by Robert Harrison on 8/26/26.
+//
+
+#ifndef THUMBBUDDY_VERSION_H
+#define THUMBBUDDY_VERSION_H
+
+#include <string_view>
+
+namespace thumbbuddy {
+    inline constexpr std::string_view kVersion = "@PROJECT_VERSION@";
+}
+
+#endif //THUMBBUDDY_VERSION_H

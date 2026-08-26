@@ -1,6 +1,20 @@
 add_library(thumbbuddy_core)
 add_library(ThumbBuddy::core ALIAS thumbbuddy_core)
 
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/thumbbuddy/Version.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/thumbbuddy/Version.h
+        @ONLY
+)
+
+target_sources(
+        thumbbuddy_core
+        PUBLIC
+        FILE_SET generated_headers TYPE HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/generated
+        FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/thumbbuddy/Version.h
+)
+
 target_sources(
         thumbbuddy_core
         PRIVATE
