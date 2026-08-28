@@ -29,8 +29,8 @@ int main(int argc, char* argv[]) {
     const thumbbuddy::cli::Options options = thumbbuddy::cli::parseArgs(args);
 
     if (options.error.has_value()) {
-        std::cerr << options.error.value() << "\n";
-        return 1;
+        std::cerr << "thumbbuddy: " << options.error.value() << "\n";
+        return 2;
     }
 
     switch (options.mode) {

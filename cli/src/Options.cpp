@@ -8,6 +8,9 @@ namespace thumbbuddy::cli {
     Options parseArgs(std::span<char* const> args) {
         Options options {};
 
+        bool wantsHelp {};
+        bool wantsVersion {};
+
         for (std::size_t i = 0; i < args.size(); i++) {
             const std::string_view arg { args[i] };
 
@@ -20,17 +23,22 @@ namespace thumbbuddy::cli {
             }
 
             if (arg == "--help" || arg == "-h") {
-                options.mode = Mode::help;
+                wantsHelp = true;
             } else if (arg == "--version" || arg == "-v") {
-                options.mode = Mode::version;
+                wantsVersion = true;
             } else if (arg.size() > 1 && arg.starts_with('-')) {
                 // A lone "-" conventionally means stdin, so only longer tokens are flags.
                 options.error = "unrecognized option '" + std::string { arg } + "'";
+                return options;
             } else {
                 options.inputs.emplace_back(arg);
-                options.mode = Mode::run;
             }
         }
+
+        // "--help" wins over "--version" regardless of the order they were given in.
+        options.mode = wantsHelp    ? Mode::help
+                     : wantsVersion ? Mode::version
+                                    : Mode::run;
 
         return options;
     }
