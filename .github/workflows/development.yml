@@ -1,0 +1,42 @@
+name: Development
+
+on:
+  # Callable by other workflows (e.g. a future Release workflow) so the build
+  # steps -- including the CMake version pin -- live in exactly one place.
+  workflow_call:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: Linux }
+          - { os: macos-latest,  name: macOS }
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # Runner images ship CMake 3.31 (Ubuntu) and 4.1 (macOS), both below the
+      # 4.2 that CMakeLists.txt requires, so install a newer one explicitly.
+      - name: Install CMake and Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "4.3.1"
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure

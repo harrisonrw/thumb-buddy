@@ -40,3 +40,11 @@ target_compile_features(
 )
 
 target_link_libraries(thumbbuddy_core PRIVATE thumbbuddy_warnings)
+
+install(
+        TARGETS thumbbuddy_core
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        FILE_SET HEADERS DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILE_SET generated_headers DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)

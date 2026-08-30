@@ -11,3 +11,8 @@ target_link_libraries(
         ThumbBuddy::core
         thumbbuddy_warnings
 )
+
+install(
+        TARGETS thumbbuddy
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
