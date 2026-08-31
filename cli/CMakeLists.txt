@@ -1,7 +1,6 @@
 add_executable(
         thumbbuddy
         src/main.cpp
-        src/Options.h
         src/Options.cpp
 )
 
