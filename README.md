@@ -1,5 +1,8 @@
 # thumb-buddy
 
+[![Development](https://github.com/harrisonrw/thumb-buddy/actions/workflows/development.yml/badge.svg?branch=main&event=push)](https://github.com/harrisonrw/thumb-buddy/actions/workflows/development.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ## Building
 
 ### Requirements
