@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, name: Linux }
+          - { os: ubuntu-26.04,  name: Linux }
           - { os: macos-latest,  name: macOS }
 
     steps:
@@ -31,6 +31,26 @@ jobs:
         uses: lukka/get-cmake@latest
         with:
           cmakeVersion: "4.3.1"
+
+      # FFmpeg is consumed through pkg-config, so each runner needs the
+      # development packages (headers + .pc files) rather than the ffmpeg
+      # binary the images already ship. The Ubuntu release is pinned rather
+      # than tracking ubuntu-latest because core/CMakeLists.txt requires
+      # FFmpeg 8, and only 26.04 carries it in apt.
+      - name: Install FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libavformat-dev \
+            libavcodec-dev \
+            libavutil-dev \
+            libswscale-dev
+
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install pkg-config ffmpeg
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
