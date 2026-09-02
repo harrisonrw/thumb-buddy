@@ -9,7 +9,13 @@ set(INSTALL_GTEST OFF)
 set(BUILD_GMOCK OFF)
 FetchContent_MakeAvailable(googletest)
 
-add_executable(thumbbuddy_tests FrameCandidateTest.cpp)
+add_executable(
+        thumbbuddy_tests
+        FrameCandidateTest.cpp
+        FrameRateTest.cpp
+        MediaInfoTest.cpp
+)
+
 target_link_libraries(thumbbuddy_tests PRIVATE ThumbBuddy::core GTest::gtest_main)
 
 include(GoogleTest)

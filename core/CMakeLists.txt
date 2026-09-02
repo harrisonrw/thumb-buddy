@@ -40,6 +40,9 @@ target_sources(
         FILE_SET HEADERS
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
         FILES
+        include/thumbbuddy/FrameRate.h
+        include/thumbbuddy/MediaInfo.h
+        include/thumbbuddy/MediaType.h
         include/thumbbuddy/FrameCandidate.h
         include/thumbbuddy/FrameAnalyzer.h
         include/thumbbuddy/ThumbnailGenerator.h
