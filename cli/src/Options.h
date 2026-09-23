@@ -15,7 +15,8 @@ namespace thumbbuddy::cli {
     enum class Mode {
         run,
         version,
-        help
+        help,
+        info
     };
 
     struct Options {

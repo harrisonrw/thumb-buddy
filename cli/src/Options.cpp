@@ -10,6 +10,7 @@ namespace thumbbuddy::cli {
 
         bool wantsHelp {};
         bool wantsVersion {};
+        bool wantsInfo {};
 
         for (std::size_t i = 0; i < args.size(); i++) {
             const std::string_view arg { args[i] };
@@ -26,6 +27,8 @@ namespace thumbbuddy::cli {
                 wantsHelp = true;
             } else if (arg == "--version" || arg == "-v") {
                 wantsVersion = true;
+            } else if (arg == "--info" || arg == "-i") {
+                wantsInfo = true;
             } else if (arg.size() > 1 && arg.starts_with('-')) {
                 // A lone "-" conventionally means stdin, so only longer tokens are flags.
                 options.error = "unrecognized option '" + std::string { arg } + "'";
@@ -38,7 +41,8 @@ namespace thumbbuddy::cli {
         // "--help" wins over "--version" regardless of the order they were given in.
         options.mode = wantsHelp    ? Mode::help
                      : wantsVersion ? Mode::version
-                                    : Mode::run;
+                     : wantsInfo    ? Mode::info
+                     : Mode::run;
 
         return options;
     }

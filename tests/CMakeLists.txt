@@ -14,6 +14,7 @@ add_executable(
         FrameCandidateTest.cpp
         FrameRateTest.cpp
         MediaInfoTest.cpp
+        MediaReaderTest.cpp
 )
 
 target_link_libraries(thumbbuddy_tests PRIVATE ThumbBuddy::core GTest::gtest_main)

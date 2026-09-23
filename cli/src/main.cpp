@@ -4,9 +4,14 @@
 
 #include <iostream>
 #include <span>
+#include <string>
 #include <string_view>
+#include <vector>
+#include <cmath>
+#include <format>
 #include <thumbbuddy/FrameCandidate.h>
 #include <thumbbuddy/Version.h>
+#include <thumbbuddy/MediaReader.h>
 #include "Options.h"
 
 static int showHelp() {
@@ -15,12 +20,69 @@ static int showHelp() {
     std::cout << "Options:" << "\n";
     std::cout << "-h, --help             Print this help" << "\n";
     std::cout << "-v, --version          Output the version number" << "\n";
+    std::cout << "-i, --info <path>      Output metadata for file" << "\n";
 
     return 0;
 }
 
 static int showVersion() {
     std::cout << "thumbbuddy version " << thumbbuddy::kVersion << "\n";
+    return 0;
+}
+
+static std::string formatDuration(double seconds) {
+    const long long total = std::llround(seconds);
+    const long long hours = total / 3600;
+    const long long minutes = (total / 60) % 60;
+    const long long secs = total % 60;
+
+    if (hours > 0) {
+        return std::format("{}:{:02}:{:02}", hours, minutes, secs);
+    }
+    return std::format("{}:{:02}", minutes, secs);
+}
+
+static std::string toMbps(std::uint64_t bitsPerSecond) {
+    const double mbps = static_cast<double>(bitsPerSecond) / 1'000'000.0;
+    return std::format("{:.1f} Mbps", mbps);
+}
+
+static int showInfo(const std::vector<std::string_view>& inputs) {
+    if (inputs.empty()) {
+        std::cerr << "thumbbuddy: --info requires a path" << "\n";
+        return 2;
+    }
+
+    const std::string path { inputs.front() };
+
+    std::string error;
+    const std::optional<thumbbuddy::MediaReader> reader = thumbbuddy::MediaReader::open(path, &error);
+    if (!reader.has_value()) {
+        std::cerr << "thumbbuddy: " << path << ": " << error << "\n";
+        return 1;
+    }
+
+    const thumbbuddy::MediaInfo info = reader->info();
+    if (info.duration.has_value()) {
+        std::cout << "Duration: " << formatDuration(info.duration.value()) << "\n";
+    }
+
+    if (info.mediaType != thumbbuddy::MediaType::unknown) {
+        std::cout << "Resolution: " << info.width << "x" << info.height << "\n";
+    }
+
+    if (info.frameRate.has_value()) {
+        std::cout << "Frame Rate: " << info.frameRate.value().toString() << "\n";
+    }
+
+    if (info.bitRate.has_value()) {
+        std::cout << "Bit Rate: " << toMbps(info.bitRate.value()) << "\n";
+    }
+
+    if (info.codec.has_value()) {
+        std::cout << "Codec: " << info.codec.value() << "\n";
+    }
+
     return 0;
 }
 
@@ -38,6 +100,8 @@ int main(int argc, char* argv[]) {
             return showHelp();
         case thumbbuddy::cli::Mode::version:
             return showVersion();
+        case thumbbuddy::cli::Mode::info:
+            return showInfo(options.inputs);
         case thumbbuddy::cli::Mode::run:
             break;
     }

@@ -16,9 +16,10 @@ namespace thumbbuddy {
         MediaType mediaType {};
         int width {};
         int height {};
-        std::optional<double> duration {};
+        std::optional<double> duration {}; // in seconds
         std::optional<FrameRate> frameRate {};
         std::optional<std::string> codec {};
+        std::optional<std::uint64_t> bitRate {}; // in bits per second
     };
 }
 

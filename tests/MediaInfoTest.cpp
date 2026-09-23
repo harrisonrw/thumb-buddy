@@ -13,6 +13,7 @@ TEST(MediaInfo, DefaultsToUnknown) {
     EXPECT_EQ(mediaInfo.duration, std::nullopt);
     EXPECT_EQ(mediaInfo.frameRate, std::nullopt);
     EXPECT_EQ(mediaInfo.codec, std::nullopt);
+    EXPECT_EQ(mediaInfo.bitRate, std::nullopt);
 }
 
 TEST(MediaInfo, InitializationWithImage) {
@@ -23,6 +24,7 @@ TEST(MediaInfo, InitializationWithImage) {
     EXPECT_EQ(mediaInfo.duration, std::nullopt);
     EXPECT_EQ(mediaInfo.frameRate, std::nullopt);
     EXPECT_EQ(mediaInfo.codec, std::nullopt);
+    EXPECT_EQ(mediaInfo.bitRate, std::nullopt);
 }
 
 TEST(MediaInfo, InitializationWithVideo) {
@@ -34,7 +36,8 @@ TEST(MediaInfo, InitializationWithVideo) {
         768,
         30.0,
         frameRate,
-        "h264"
+        "h264",
+        60000
     };
 
     EXPECT_EQ(mediaInfo.mediaType, thumbbuddy::MediaType::video);
@@ -43,6 +46,7 @@ TEST(MediaInfo, InitializationWithVideo) {
     EXPECT_DOUBLE_EQ(mediaInfo.duration.value(), 30.0);
     EXPECT_EQ(mediaInfo.frameRate.value(), frameRate);
     EXPECT_EQ(mediaInfo.codec, "h264");
+    EXPECT_EQ(mediaInfo.bitRate.value(), 60000);
 }
 
 TEST(MediaInfo, VideoWithUnknownFrameRate) {
@@ -52,11 +56,13 @@ TEST(MediaInfo, VideoWithUnknownFrameRate) {
         768,
         30.0,
         std::nullopt,
-        "h264"
+        "h264",
+        60000
     };
 
     EXPECT_EQ(mediaInfo.mediaType, thumbbuddy::MediaType::video);
     EXPECT_DOUBLE_EQ(mediaInfo.duration.value(), 30.0);
     EXPECT_EQ(mediaInfo.frameRate, std::nullopt);
     EXPECT_EQ(mediaInfo.codec, "h264");
+    EXPECT_EQ(mediaInfo.bitRate.value(), 60000);
 }

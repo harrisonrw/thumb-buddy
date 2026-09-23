@@ -32,6 +32,7 @@ target_sources(
         PRIVATE
         src/FrameAnalyzer.cpp
         src/ThumbnailGenerator.cpp
+        src/MediaReader.cpp
 )
 
 target_sources(
@@ -46,6 +47,7 @@ target_sources(
         include/thumbbuddy/FrameCandidate.h
         include/thumbbuddy/FrameAnalyzer.h
         include/thumbbuddy/ThumbnailGenerator.h
+        include/thumbbuddy/MediaReader.h
 )
 
 target_compile_features(
