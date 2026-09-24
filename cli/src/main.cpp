@@ -56,6 +56,10 @@ static int showInfo(const std::vector<std::string_view>& inputs) {
         std::cout << "Frame Rate: " << info.frameRate.value().toString() << "\n";
     }
 
+    if (info.colorDepth.has_value()) {
+        std::cout << "Color Depth: " << info.colorDepth.value() << "-bit" << "\n";
+    }
+
     if (info.bitRate.has_value()) {
         std::cout << "Bit Rate: " << thumbbuddy::cli::toMbps(info.bitRate.value()) << "\n";
     }

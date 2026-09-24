@@ -14,10 +14,17 @@ TEST(MediaInfo, DefaultsToUnknown) {
     EXPECT_EQ(mediaInfo.frameRate, std::nullopt);
     EXPECT_EQ(mediaInfo.codec, std::nullopt);
     EXPECT_EQ(mediaInfo.bitRate, std::nullopt);
+    EXPECT_EQ(mediaInfo.colorDepth, std::nullopt);
 }
 
 TEST(MediaInfo, InitializationWithImage) {
-    const thumbbuddy::MediaInfo mediaInfo { thumbbuddy::MediaType::image, 1024, 768 };
+    const thumbbuddy::MediaInfo mediaInfo {
+        .mediaType = thumbbuddy::MediaType::image,
+        .width = 1024,
+        .height = 768,
+        .colorDepth = 8
+    };
+
     EXPECT_EQ(mediaInfo.mediaType, thumbbuddy::MediaType::image);
     EXPECT_EQ(mediaInfo.width, 1024);
     EXPECT_EQ(mediaInfo.height, 768);
@@ -25,19 +32,21 @@ TEST(MediaInfo, InitializationWithImage) {
     EXPECT_EQ(mediaInfo.frameRate, std::nullopt);
     EXPECT_EQ(mediaInfo.codec, std::nullopt);
     EXPECT_EQ(mediaInfo.bitRate, std::nullopt);
+    EXPECT_EQ(mediaInfo.colorDepth.value(), 8);
 }
 
 TEST(MediaInfo, InitializationWithVideo) {
     const thumbbuddy::FrameRate frameRate { 30000, 1001 };
 
     const thumbbuddy::MediaInfo mediaInfo {
-        thumbbuddy::MediaType::video,
-        1024,
-        768,
-        30.0,
-        frameRate,
-        "h264",
-        60000
+        .mediaType = thumbbuddy::MediaType::video,
+        .width = 1024,
+        .height = 768,
+        .duration = 30.0,
+        .frameRate = frameRate,
+        .codec = "h264",
+        .bitRate = 60000,
+        .colorDepth = 10
     };
 
     EXPECT_EQ(mediaInfo.mediaType, thumbbuddy::MediaType::video);
@@ -47,17 +56,19 @@ TEST(MediaInfo, InitializationWithVideo) {
     EXPECT_EQ(mediaInfo.frameRate.value(), frameRate);
     EXPECT_EQ(mediaInfo.codec, "h264");
     EXPECT_EQ(mediaInfo.bitRate.value(), 60000);
+    EXPECT_EQ(mediaInfo.colorDepth.value(), 10);
 }
 
 TEST(MediaInfo, VideoWithUnknownFrameRate) {
     const thumbbuddy::MediaInfo mediaInfo {
-        thumbbuddy::MediaType::video,
-        1024,
-        768,
-        30.0,
-        std::nullopt,
-        "h264",
-        60000
+        .mediaType = thumbbuddy::MediaType::video,
+        .width = 1024,
+        .height = 768,
+        .duration = 30.0,
+        .frameRate = std::nullopt,
+        .codec = "h264",
+        .bitRate = 60000,
+        .colorDepth = 10
     };
 
     EXPECT_EQ(mediaInfo.mediaType, thumbbuddy::MediaType::video);
@@ -65,4 +76,5 @@ TEST(MediaInfo, VideoWithUnknownFrameRate) {
     EXPECT_EQ(mediaInfo.frameRate, std::nullopt);
     EXPECT_EQ(mediaInfo.codec, "h264");
     EXPECT_EQ(mediaInfo.bitRate.value(), 60000);
+    EXPECT_EQ(mediaInfo.colorDepth.value(), 10);
 }

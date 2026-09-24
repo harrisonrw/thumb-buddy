@@ -20,6 +20,7 @@ namespace thumbbuddy {
         std::optional<FrameRate> frameRate {};
         std::optional<std::string> codec {};
         std::optional<std::uint64_t> bitRate {}; // in bits per second
+        std::optional<int> colorDepth {}; // 8-bit, 10-bit, etc
     };
 }
 

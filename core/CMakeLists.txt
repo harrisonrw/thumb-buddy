@@ -12,7 +12,7 @@ find_package(PkgConfig REQUIRED)
 # Floor is FFmpeg 8.0, which apt provides on Ubuntu 26.04 -- the release CI
 # pins for exactly this reason. Raising it further means CI can no longer
 # install FFmpeg from a package manager.
-pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET GLOBAL
         libavformat>=62  # FFmpeg 8.0
         libavcodec>=62   # FFmpeg 8.0
         libavutil>=60    # FFmpeg 8.0
@@ -33,6 +33,7 @@ target_sources(
         src/FrameAnalyzer.cpp
         src/ThumbnailGenerator.cpp
         src/MediaReader.cpp
+        src/ColorDepth.cpp
 )
 
 target_sources(
@@ -48,6 +49,7 @@ target_sources(
         include/thumbbuddy/FrameAnalyzer.h
         include/thumbbuddy/ThumbnailGenerator.h
         include/thumbbuddy/MediaReader.h
+        include/thumbbuddy/ColorDepth.h
 )
 
 target_compile_features(

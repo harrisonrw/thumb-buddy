@@ -7,6 +7,7 @@
 #include <thumbbuddy/MediaReader.h>
 #include <thumbbuddy/FrameRate.h>
 #include <thumbbuddy/MediaInfo.h>
+#include <thumbbuddy/ColorDepth.h>
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -79,6 +80,8 @@ namespace thumbbuddy {
                 mediaInfo.bitRate = static_cast<std::uint64_t>(formatContext_.get()->bit_rate);
             }
         }
+
+        mediaInfo.colorDepth = colorDepthFor(parameters->format, parameters->bits_per_raw_sample);
 
         return mediaInfo;
     }
