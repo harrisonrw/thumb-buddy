@@ -34,6 +34,7 @@ target_sources(
         src/ThumbnailGenerator.cpp
         src/MediaReader.cpp
         src/ColorDepth.cpp
+        src/Logging.cpp
 )
 
 target_sources(
@@ -50,6 +51,7 @@ target_sources(
         include/thumbbuddy/ThumbnailGenerator.h
         include/thumbbuddy/MediaReader.h
         include/thumbbuddy/ColorDepth.h
+        include/thumbbuddy/Logging.h
 )
 
 target_compile_features(

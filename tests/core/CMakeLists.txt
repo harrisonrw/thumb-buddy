@@ -3,6 +3,7 @@ add_executable(
         ColorDepthTest.cpp
         FrameCandidateTest.cpp
         FrameRateTest.cpp
+        LoggingTest.cpp
         MediaInfoTest.cpp
         MediaReaderTest.cpp
 )

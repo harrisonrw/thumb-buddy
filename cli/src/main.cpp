@@ -9,6 +9,7 @@
 #include <thumbbuddy/FrameCandidate.h>
 #include <thumbbuddy/Version.h>
 #include <thumbbuddy/MediaReader.h>
+#include <thumbbuddy/Logging.h>
 #include <Options.h>
 #include <Format.h>
 
@@ -72,6 +73,9 @@ static int showInfo(const std::vector<std::string_view>& inputs) {
 }
 
 int main(int argc, char* argv[]) {
+    // TODO: Suppress info and warning messages from FFmpeg by setting to 'error' in Release builds.
+    thumbbuddy::setLogLevel(thumbbuddy::LogLevel::info);
+
     const std::span<char* const> args = std::span<char * const> { argv + 1, static_cast<std::size_t>(argc > 0 ? argc - 1: 0) };
     const thumbbuddy::cli::Options options = thumbbuddy::cli::parseArgs(args);
 
