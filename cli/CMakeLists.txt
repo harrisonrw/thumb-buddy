@@ -1,13 +1,32 @@
+add_library(thumbbuddy_cli
+        STATIC
+        src/Options.cpp
+        src/Format.cpp
+)
+
+target_include_directories(
+        thumbbuddy_cli
+        PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+        thumbbuddy_cli
+        PUBLIC
+        ThumbBuddy::core
+        PRIVATE
+        thumbbuddy_warnings
+)
+
 add_executable(
         thumbbuddy
         src/main.cpp
-        src/Options.cpp
 )
 
 target_link_libraries(
         thumbbuddy
         PRIVATE
-        ThumbBuddy::core
+        thumbbuddy_cli
         thumbbuddy_warnings
 )
 

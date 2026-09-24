@@ -2,7 +2,7 @@
 // Created by Robert Harrison on 8/28/26.
 //
 
-#include "Options.h"
+#include <Options.h>
 
 namespace thumbbuddy::cli {
     Options parseArgs(std::span<char* const> args) {

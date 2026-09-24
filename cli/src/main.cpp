@@ -6,13 +6,11 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <vector>
-#include <cmath>
-#include <format>
 #include <thumbbuddy/FrameCandidate.h>
 #include <thumbbuddy/Version.h>
 #include <thumbbuddy/MediaReader.h>
-#include "Options.h"
+#include <Options.h>
+#include <Format.h>
 
 static int showHelp() {
     std::cout << "Usage: thumbbuddy [options]" << "\n";
@@ -28,23 +26,6 @@ static int showHelp() {
 static int showVersion() {
     std::cout << "thumbbuddy version " << thumbbuddy::kVersion << "\n";
     return 0;
-}
-
-static std::string formatDuration(double seconds) {
-    const long long total = std::llround(seconds);
-    const long long hours = total / 3600;
-    const long long minutes = (total / 60) % 60;
-    const long long secs = total % 60;
-
-    if (hours > 0) {
-        return std::format("{}:{:02}:{:02}", hours, minutes, secs);
-    }
-    return std::format("{}:{:02}", minutes, secs);
-}
-
-static std::string toMbps(std::uint64_t bitsPerSecond) {
-    const double mbps = static_cast<double>(bitsPerSecond) / 1'000'000.0;
-    return std::format("{:.1f} Mbps", mbps);
 }
 
 static int showInfo(const std::vector<std::string_view>& inputs) {
@@ -64,7 +45,7 @@ static int showInfo(const std::vector<std::string_view>& inputs) {
 
     const thumbbuddy::MediaInfo info = reader->info();
     if (info.duration.has_value()) {
-        std::cout << "Duration: " << formatDuration(info.duration.value()) << "\n";
+        std::cout << "Duration: " << thumbbuddy::cli::formatDuration(info.duration.value()) << "\n";
     }
 
     if (info.mediaType != thumbbuddy::MediaType::unknown) {
@@ -76,7 +57,7 @@ static int showInfo(const std::vector<std::string_view>& inputs) {
     }
 
     if (info.bitRate.has_value()) {
-        std::cout << "Bit Rate: " << toMbps(info.bitRate.value()) << "\n";
+        std::cout << "Bit Rate: " << thumbbuddy::cli::toMbps(info.bitRate.value()) << "\n";
     }
 
     if (info.codec.has_value()) {

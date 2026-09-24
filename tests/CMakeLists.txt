@@ -9,15 +9,9 @@ set(INSTALL_GTEST OFF)
 set(BUILD_GMOCK OFF)
 FetchContent_MakeAvailable(googletest)
 
-add_executable(
-        thumbbuddy_tests
-        FrameCandidateTest.cpp
-        FrameRateTest.cpp
-        MediaInfoTest.cpp
-        MediaReaderTest.cpp
-)
-
-target_link_libraries(thumbbuddy_tests PRIVATE ThumbBuddy::core GTest::gtest_main)
-
 include(GoogleTest)
-gtest_discover_tests(thumbbuddy_tests)
+
+# One test binary per layer, so that core's tests cannot quietly grow a
+# dependency on the CLI. Run a single layer with `ctest -L core` / `-L cli`.
+add_subdirectory(core)
+add_subdirectory(cli)
