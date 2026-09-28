@@ -3,6 +3,23 @@
 [![Development](https://github.com/harrisonrw/thumb-buddy/actions/workflows/development.yml/badge.svg?branch=main&event=push)](https://github.com/harrisonrw/thumb-buddy/actions/workflows/development.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+Thumb Buddy is a cross-platform C++ video thumbnail engine. It decodes and
+samples frames with FFmpeg, scores them on image-quality metrics such as
+sharpness, brightness, and motion, and ranks a small set of strong, visually
+distinct thumbnail candidates. A later, optional AI layer will re-rank those
+candidates semantically and explain its choices.
+
+The portable core carries no Apple-specific dependencies and is consumed by a
+CLI on macOS and Linux, with a native SwiftUI macOS app planned on top of the
+same engine.
+
+### Status
+
+The build, CLI scaffolding, and FFmpeg-backed media inspection are in place.
+A CLI command, `thumbbuddy --info <path>`, reports duration, resolution, frame rate, color
+depth, bit rate, and codec. Frame extraction, the analysis pipeline, and
+candidate ranking are work in progress.
+
 ## Building
 
 ### Requirements
