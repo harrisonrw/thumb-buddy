@@ -44,6 +44,7 @@ target_sources(
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
         FILES
         include/thumbbuddy/FrameRate.h
+        include/thumbbuddy/ImageBuffer.h
         include/thumbbuddy/MediaInfo.h
         include/thumbbuddy/MediaType.h
         include/thumbbuddy/FrameCandidate.h

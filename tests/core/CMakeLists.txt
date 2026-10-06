@@ -4,6 +4,7 @@ add_executable(
         FrameCandidateTest.cpp
         FrameRateTest.cpp
         LoggingTest.cpp
+        ImageBufferTest.cpp
         MediaInfoTest.cpp
         MediaReaderTest.cpp
 )
