@@ -11,30 +11,22 @@
 #include <string>
 #include <thumbbuddy/MediaInfo.h>
 
-struct AVFormatContext;
-struct AVStream;
-
 namespace thumbbuddy {
     class MediaReader {
     public:
         [[nodiscard]] static std::optional<MediaReader> open(const std::filesystem::path &path,
                                                              std::string *error);
 
+        ~MediaReader();
+        MediaReader(MediaReader &&) noexcept;
+        MediaReader &operator=(MediaReader &&) noexcept;
+
         [[nodiscard]] MediaInfo info() const;
 
     private:
-        struct AVFormatContextDeleter {
-            void operator()(AVFormatContext *ctx) const noexcept;
-        };
-
-        // Private constructor so a MediaReader can only come from open()
-        explicit MediaReader(AVFormatContext *ctx) noexcept;
-
-        [[nodiscard]] std::optional<double> containerDuration() const;
-        [[nodiscard]] std::optional<FrameRate> guessFrameRate(AVStream *stream) const;
-        [[nodiscard]] bool isStillImage() const;
-
-        std::unique_ptr<AVFormatContext, AVFormatContextDeleter> formatContext_;
+        struct Impl;
+        explicit MediaReader(std::unique_ptr<Impl> impl) noexcept;
+        std::unique_ptr<Impl> impl_;
     };
 }
 

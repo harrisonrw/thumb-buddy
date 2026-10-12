@@ -5,57 +5,70 @@
 #include <string_view>
 
 #include <thumbbuddy/MediaReader.h>
+#include "ffmpeg/FormatContext.h"
 #include <thumbbuddy/FrameRate.h>
 #include <thumbbuddy/MediaInfo.h>
 #include <thumbbuddy/ColorDepth.h>
 
 extern "C" {
-#include <libavformat/avformat.h>
 #include <libavcodec/codec_id.h>
 }
 
-namespace {
-    std::string describeError(int errorCode) {
-        char buffer[AV_ERROR_MAX_STRING_SIZE] {};
-        av_strerror(errorCode, buffer, sizeof buffer);
-        return buffer;
-    }
-}
-
 namespace thumbbuddy {
-    MediaReader::MediaReader(AVFormatContext *ctx) noexcept : formatContext_ { ctx } {}
+    struct MediaReader::Impl {
+        ffmpeg::FormatContextPtr formatContext;
+
+        [[nodiscard]] std::optional<double> containerDuration() const {
+            if (formatContext->duration == AV_NOPTS_VALUE) {
+                return std::nullopt;
+            }
+            return static_cast<double>(formatContext->duration) / AV_TIME_BASE;  // micro-seconds to seconds
+        }
+
+        [[nodiscard]] std::optional<FrameRate> guessFrameRate(AVStream *stream) const {
+            const AVRational frameRate = av_guess_frame_rate(formatContext.get(), stream, nullptr);
+            if (frameRate.num <= 0 || frameRate.den <= 0) {
+                // av_guess_frame_rate returns 0/1 when it has no idea
+                return std::nullopt;
+            }
+            return FrameRate { frameRate.num, frameRate.den };
+        }
+
+        [[nodiscard]] bool isStillImage() const {
+            // ffmpeg models a still image as a single-frame video stream.
+            const std::string_view demuxer = formatContext->iformat->name;
+            return demuxer == "image2" || demuxer.ends_with("_pipe");
+        }
+    };
+
+    MediaReader::MediaReader(std::unique_ptr<Impl> impl) noexcept : impl_ { std::move(impl) } {}
+    MediaReader::~MediaReader() = default;
+    MediaReader::MediaReader(MediaReader &&) noexcept = default;
+    MediaReader &MediaReader::operator=(MediaReader &&) noexcept = default;
 
     std::optional<MediaReader> MediaReader::open(const std::filesystem::path &path,
                                                  std::string *error) {
-        AVFormatContext *ctx = nullptr;
-
-        const int openResult = avformat_open_input(&ctx, path.c_str(), nullptr, nullptr);
-        if (openResult < 0) {
-            *error = describeError(openResult);
+        ffmpeg::FormatContextPtr formatContext = ffmpeg::openInput(path, error);
+        if (!formatContext) {
             return std::nullopt;
         }
 
-        const int infoResult = avformat_find_stream_info(ctx, nullptr);
-        if (infoResult < 0) {
-            avformat_close_input(&ctx);
-            *error = describeError(infoResult);
-            return std::nullopt;
-        }
-
-        return MediaReader { ctx };
+        auto impl = std::make_unique<Impl>();
+        impl->formatContext = std::move(formatContext);
+        return MediaReader { std::move(impl) };
     }
 
     MediaInfo MediaReader::info() const {
         MediaInfo mediaInfo = {};
-        mediaInfo.duration = containerDuration();
+        mediaInfo.duration = impl_->containerDuration();
 
-        const int index = av_find_best_stream(formatContext_.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+        const int index = av_find_best_stream(impl_->formatContext.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
         if (index < 0) {
             // No video stream.
             return mediaInfo;
         }
 
-        AVStream *stream = formatContext_->streams[index];
+        AVStream *stream = impl_->formatContext->streams[index];
         if (stream->disposition & AV_DISPOSITION_ATTACHED_PIC) {
             // Cover art in an audio file.
             return mediaInfo;
@@ -69,46 +82,20 @@ namespace thumbbuddy {
             mediaInfo.codec = avcodec_get_name(parameters->codec_id);
         }
 
-        if (isStillImage()) {
+        if (impl_->isStillImage()) {
             mediaInfo.mediaType = MediaType::image;
             mediaInfo.duration = std::nullopt; // ffmpeg gives images a one-frame timeline
         } else {
             mediaInfo.mediaType = MediaType::video;
-            mediaInfo.frameRate = guessFrameRate(stream);
+            mediaInfo.frameRate = impl_->guessFrameRate(stream);
 
-            if (formatContext_.get()->bit_rate > 0) {
-                mediaInfo.bitRate = static_cast<std::uint64_t>(formatContext_.get()->bit_rate);
+            if (impl_->formatContext->bit_rate > 0) {
+                mediaInfo.bitRate = static_cast<std::uint64_t>(impl_->formatContext->bit_rate);
             }
         }
 
         mediaInfo.colorDepth = colorDepthFor(parameters->format, parameters->bits_per_raw_sample);
 
         return mediaInfo;
-    }
-
-    void MediaReader::AVFormatContextDeleter::operator()(AVFormatContext *ctx) const noexcept {
-        avformat_close_input(&ctx);
-    }
-
-    std::optional<double> MediaReader::containerDuration() const {
-        if (formatContext_->duration == AV_NOPTS_VALUE) {
-            return std::nullopt;
-        }
-        return static_cast<double>(formatContext_->duration) / AV_TIME_BASE;  // micro-seconds to seconds
-    }
-
-    std::optional<FrameRate> MediaReader::guessFrameRate(AVStream *stream) const {
-        const AVRational frameRate = av_guess_frame_rate(formatContext_.get(), stream, nullptr);
-        if (frameRate.num <= 0 || frameRate.den <= 0) {
-            // av_guess_frame_rate returns 0/1 when it has no idea
-            return std::nullopt;
-        }
-        return FrameRate { frameRate.num, frameRate.den };
-    }
-
-    bool MediaReader::isStillImage() const {
-        // ffmpeg models a still image as a single-frame video stream.
-        const std::string_view demuxer = formatContext_->iformat->name;
-        return demuxer == "image2" || demuxer.ends_with("_pipe");
     }
 } // thumbbuddy
