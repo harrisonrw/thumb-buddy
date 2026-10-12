@@ -30,7 +30,9 @@ target_sources(
 target_sources(
         thumbbuddy_core
         PRIVATE
+        src/ffmpeg/FormatContext.cpp
         src/FrameAnalyzer.cpp
+        src/FrameExtractor.cpp
         src/ThumbnailGenerator.cpp
         src/MediaReader.cpp
         src/ColorDepth.cpp
@@ -43,8 +45,10 @@ target_sources(
         FILE_SET HEADERS
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
         FILES
+        include/thumbbuddy/Frame.h
         include/thumbbuddy/FrameRate.h
         include/thumbbuddy/ImageBuffer.h
+        include/thumbbuddy/FrameExtractor.h
         include/thumbbuddy/MediaInfo.h
         include/thumbbuddy/MediaType.h
         include/thumbbuddy/FrameCandidate.h

@@ -8,6 +8,7 @@
 #include <string_view>
 #include <thumbbuddy/FrameCandidate.h>
 #include <thumbbuddy/Version.h>
+#include <thumbbuddy/FrameExtractor.h>
 #include <thumbbuddy/MediaReader.h>
 #include <thumbbuddy/Logging.h>
 #include <Options.h>
@@ -72,6 +73,24 @@ static int showInfo(const std::vector<std::string_view>& inputs) {
     return 0;
 }
 
+static int extractFrames(const std::vector<std::string_view>& inputs) {
+    if (inputs.empty()) {
+        std::cerr << "thumbbuddy: requires a path" << "\n";
+        return 2;
+    }
+
+    const std::string path { inputs.front() };
+
+    std::string error;
+    const std::optional<thumbbuddy::FrameExtractor> frameExtractor = thumbbuddy::FrameExtractor::open(path, &error);
+    if (!frameExtractor.has_value()) {
+        std::cerr << "thumbbuddy: " << path << ": " << error << "\n";
+        return 1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     // TODO: Suppress info and warning messages from FFmpeg by setting to 'error' in Release builds.
     thumbbuddy::setLogLevel(thumbbuddy::LogLevel::info);
@@ -92,12 +111,8 @@ int main(int argc, char* argv[]) {
         case thumbbuddy::cli::Mode::info:
             return showInfo(options.inputs);
         case thumbbuddy::cli::Mode::run:
-            break;
+            return extractFrames(options.inputs);
     }
-
-    std::cout << "Thumb Buddy\n";
-
-    thumbbuddy::FrameCandidate frameCandidate = {  0.0, 0.20, 0.50, 0.10 };
 
     return 0;
 }

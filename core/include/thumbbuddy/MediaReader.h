@@ -27,7 +27,7 @@ namespace thumbbuddy {
             void operator()(AVFormatContext *ctx) const noexcept;
         };
 
-        // Private constructor so a VideoReader can only come from open()
+        // Private constructor so a MediaReader can only come from open()
         explicit MediaReader(AVFormatContext *ctx) noexcept;
 
         [[nodiscard]] std::optional<double> containerDuration() const;
