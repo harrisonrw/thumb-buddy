@@ -2,6 +2,7 @@ add_executable(
         thumbbuddy_core_tests
         ColorDepthTest.cpp
         FrameCandidateTest.cpp
+        FrameExtractorTest.cpp
         FrameRateTest.cpp
         FrameTest.cpp
         LoggingTest.cpp
