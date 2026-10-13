@@ -30,7 +30,7 @@ target_sources(
 target_sources(
         thumbbuddy_core
         PRIVATE
-        src/ffmpeg/FormatContext.cpp
+        src/ffmpeg/Wrappers.cpp
         src/FrameAnalyzer.cpp
         src/FrameExtractor.cpp
         src/ThumbnailGenerator.cpp

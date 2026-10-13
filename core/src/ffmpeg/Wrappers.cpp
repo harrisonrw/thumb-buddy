@@ -2,7 +2,7 @@
 // Created by Robert Harrison on 10/12/26.
 //
 
-#include "FormatContext.h"
+#include "Wrappers.h"
 
 namespace thumbbuddy::ffmpeg {
 

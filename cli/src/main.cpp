@@ -9,6 +9,7 @@
 #include <thumbbuddy/FrameCandidate.h>
 #include <thumbbuddy/Version.h>
 #include <thumbbuddy/FrameExtractor.h>
+#include <thumbbuddy/Frame.h>
 #include <thumbbuddy/MediaReader.h>
 #include <thumbbuddy/Logging.h>
 #include <Options.h>
@@ -87,6 +88,10 @@ static int extractFrames(const std::vector<std::string_view>& inputs) {
         std::cerr << "thumbbuddy: " << path << ": " << error << "\n";
         return 1;
     }
+
+    const std::vector<thumbbuddy::Frame> frames = frameExtractor->extractFrames();
+
+    std::cout << "Extracted Frames: " << frames.size() << "\n";
 
     return 0;
 }

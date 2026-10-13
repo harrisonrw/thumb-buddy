@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include <thumbbuddy/MediaReader.h>
-#include "ffmpeg/FormatContext.h"
+#include "ffmpeg/Wrappers.h"
 #include <thumbbuddy/FrameRate.h>
 #include <thumbbuddy/MediaInfo.h>
 #include <thumbbuddy/ColorDepth.h>
