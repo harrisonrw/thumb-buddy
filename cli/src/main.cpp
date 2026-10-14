@@ -83,15 +83,23 @@ static int extractFrames(const std::vector<std::string_view>& inputs) {
     const std::string path { inputs.front() };
 
     std::string error;
-    const std::optional<thumbbuddy::FrameExtractor> frameExtractor = thumbbuddy::FrameExtractor::open(path, &error);
+    std::optional<thumbbuddy::FrameExtractor> frameExtractor = thumbbuddy::FrameExtractor::open(path, &error);
     if (!frameExtractor.has_value()) {
         std::cerr << "thumbbuddy: " << path << ": " << error << "\n";
         return 1;
     }
 
-    const std::vector<thumbbuddy::Frame> frames = frameExtractor->extractFrames();
+    std::optional<std::vector<thumbbuddy::Frame>> frames = frameExtractor->extractFrames(5.0, &error);
+    if (!frames.has_value()) {
+        std::cerr << "thumbbuddy: " << path << ": " << error << "\n";
+        return 1;
+    }
 
-    std::cout << "Extracted Frames: " << frames.size() << "\n";
+    std::cout << "Extracted Frames: " << frames->size() << "\n";
+
+    for (const thumbbuddy::Frame &frame : *frames) {
+        std::cout << "Frame : " << thumbbuddy::cli::formatDuration(frame.timestamp) << "\n";
+    }
 
     return 0;
 }

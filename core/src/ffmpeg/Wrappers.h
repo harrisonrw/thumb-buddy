@@ -27,8 +27,22 @@ namespace thumbbuddy::ffmpeg {
         };
     };
 
+    struct FrameDeleter {
+        void operator()(AVFrame *frame) const {
+            av_frame_free(&frame);
+        }
+    };
+
+    struct PacketDeleter {
+        void operator()(AVPacket *pkt) const {
+            av_packet_free(&pkt);
+        }
+    };
+
     using FormatContextPtr = std::unique_ptr<AVFormatContext, FormatContextDeleter>;
     using CodecContextPtr = std::unique_ptr<AVCodecContext, CodecContextDeleter>;
+    using FramePtr = std::unique_ptr<AVFrame, FrameDeleter>;
+    using PacketPtr = std::unique_ptr<AVPacket, PacketDeleter>;
 
     [[nodiscard]] FormatContextPtr openInput(const std::filesystem::path &path, std::string *error);
 

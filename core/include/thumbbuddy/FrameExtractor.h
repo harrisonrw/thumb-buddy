@@ -19,7 +19,7 @@ namespace thumbbuddy {
         FrameExtractor(FrameExtractor &&) noexcept;
         FrameExtractor &operator=(FrameExtractor &&) noexcept;
 
-        [[nodiscard]] std::vector<Frame> extractFrames() const;
+        [[nodiscard]] std::optional<std::vector<Frame>> extractFrames(double interval, std::string *error);
 
     private:
         struct Impl;

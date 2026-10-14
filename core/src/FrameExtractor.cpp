@@ -2,13 +2,24 @@
 // Created by Robert Harrison on 10/9/26.
 //
 
+#include <cstdint>
+#include <cmath>
+#include <utility>
 #include <thumbbuddy/FrameExtractor.h>
 #include "ffmpeg/Wrappers.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
-#include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
+}
+
+namespace {
+    enum class ReceiveResult {
+        found,      // Frame now holds the target frame.
+        needsInput, // Decoder wants another packet (EAGAIN).
+        finished,   // Decoder is fully drained (EOF).
+        failed      // An actual error. `*error` is set.
+    };
 }
 
 namespace thumbbuddy {
@@ -16,6 +27,150 @@ namespace thumbbuddy {
         ffmpeg::FormatContextPtr formatContext;
         ffmpeg::CodecContextPtr decoderContext;
         int streamIndex {};
+
+        std::optional<Frame> convert(AVFrame *decoded, std::string *error) {
+            // Compute the timestamp (in the frame's own time).
+            AVStream *stream = formatContext->streams[streamIndex];
+            std::int64_t timestamp = decoded->best_effort_timestamp;
+            if (timestamp == AV_NOPTS_VALUE) {
+                // best effort is unknown, so fallback to pts.
+                timestamp = decoded->pts;
+            }
+
+            if (stream->start_time != AV_NOPTS_VALUE) {
+                // start time known, so subtract it
+                timestamp -= stream->start_time;
+            }
+
+            // Convert to seconds.
+            double frameTimestamp = static_cast<double>(timestamp) * av_q2d(stream->time_base);
+
+            // Create the Image Buffer.
+
+            std::uint32_t stride = static_cast<std::uint32_t>(decoded->width) * 4; // 4 Bytes Per Pixel
+
+            ImageBuffer imageBuffer {
+                .width = static_cast<std::uint32_t>(decoded->width),
+                .height = static_cast<std::uint32_t>(decoded->height),
+                .stride = stride,
+                .pixelFormat = PixelFormat::RGBA8
+            };
+
+            // Resize so the vector owns the memory before the scaler writes into it.
+            imageBuffer.pixels.resize(stride * static_cast<std::uint32_t>(decoded->height));
+
+            // TODO: Scaling
+
+            // TODO: Color
+
+            return Frame {frameTimestamp, std::move(imageBuffer) };
+        }
+
+        ReceiveResult receiveUntil(AVFrame *frame, AVFrame *lastFrame, std::int64_t target, std::string *error) {
+            int result;
+            while ((result = avcodec_receive_frame(decoderContext.get(), frame)) == 0) {
+                if (frame->best_effort_timestamp >= target) {
+                    return ReceiveResult::found;
+                }
+                // Too early, so keep it in case it turns out to be the last frame.
+                av_frame_unref(lastFrame);
+                av_frame_move_ref(lastFrame, frame);
+            }
+
+            if (result == AVERROR(EAGAIN)) {
+                return ReceiveResult::needsInput;
+            }
+            if (result == AVERROR_EOF) {
+                return ReceiveResult::finished;
+            }
+
+            *error = ffmpeg::describeError(result);
+            return ReceiveResult::failed;
+        }
+
+        std::optional<Frame> extractFrame(double seconds, std::string *error) {
+            AVStream *stream = formatContext->streams[streamIndex];
+
+            // Convert seconds into stream timebase units.
+            std::int64_t target = std::llround(seconds / av_q2d(stream->time_base));
+            if (stream->start_time != AV_NOPTS_VALUE) {
+                target += stream->start_time;
+            }
+
+            // Seek.
+            int seekResult = av_seek_frame(formatContext.get(), streamIndex, target, AVSEEK_FLAG_BACKWARD);
+            if (seekResult < 0) {
+                *error = ffmpeg::describeError(seekResult);
+                return std::nullopt;
+            }
+            // Flush decoder buffers so old frames don't bleed into new frame.
+            avcodec_flush_buffers(decoderContext.get());
+
+            ffmpeg::PacketPtr packet { av_packet_alloc() };
+            ffmpeg::FramePtr frame { av_frame_alloc() };
+            ffmpeg::FramePtr lastFrame { av_frame_alloc() };
+
+            if (!packet || !frame || !lastFrame) {
+                *error = "out of memory";
+                return std::nullopt;
+            }
+
+            ReceiveResult receiveResult { ReceiveResult::needsInput };
+
+            // The read loop.
+            int readResult;
+            while ((readResult = av_read_frame(formatContext.get(), packet.get())) >= 0) {
+                // Verify the packet belongs to target video stream.
+                if (packet->stream_index == streamIndex) {
+
+                    // Send packet to decoder.
+                    int result = avcodec_send_packet(decoderContext.get(), packet.get());
+                    if (result < 0) {
+                        *error = ffmpeg::describeError(result);
+                        return std::nullopt;
+                    }
+
+                    // Receive decoded frame.
+                    receiveResult = receiveUntil(frame.get(), lastFrame.get(), target, error);
+
+                    if (receiveResult == ReceiveResult::found) {
+                        return convert(frame.get(), error);
+                    }
+                    if (receiveResult == ReceiveResult::failed) {
+                        return std::nullopt;
+                    }
+                }
+
+                // Clear the packet data references before the next iteration.
+                av_packet_unref(packet.get());
+            }
+
+            if (readResult != AVERROR_EOF) {
+                *error = ffmpeg::describeError(readResult);
+                return std::nullopt;
+            }
+
+            if (receiveResult == ReceiveResult::needsInput) {
+                // Drain to get the final frame.
+                avcodec_send_packet(decoderContext.get(), nullptr);
+                receiveResult = receiveUntil(frame.get(), lastFrame.get(), target, error);
+            }
+
+            if (receiveResult == ReceiveResult::found) {
+                return convert(frame.get(), error);
+            }
+
+            if (receiveResult == ReceiveResult::finished && lastFrame->buf[0] != nullptr) {
+                return convert(lastFrame.get(), error);
+            }
+
+            if (receiveResult == ReceiveResult::failed) {
+                return std::nullopt; // `*error` was already set by receiveUntil.
+            }
+
+            *error = "no frame at the requested time";
+            return std::nullopt;
+        }
     };
 
     FrameExtractor::FrameExtractor(std::unique_ptr<Impl> impl) noexcept : impl_ { std::move(impl) } {}
@@ -71,8 +226,46 @@ namespace thumbbuddy {
         return FrameExtractor { std::move(impl) };
     }
 
-    std::vector<Frame> FrameExtractor::extractFrames() const {
-        // TODO: iterate and get frames
-        return std::vector<Frame> {};
+    std::optional<std::vector<Frame>> FrameExtractor::extractFrames(double interval, std::string *error) {
+        if (interval <= 0.0) {
+            *error = "interval must be greater than 0";
+            return std::nullopt;
+        }
+
+        std::vector<Frame> frames = {};
+
+        if (impl_->formatContext->duration == AV_NOPTS_VALUE) {
+            // No duration, so fallback to frame at time 0
+            std::optional<Frame> frame = impl_->extractFrame(0, error);
+            if (!frame) {
+                return std::nullopt; // `*error` already set by extractFrame.
+            }
+
+            frames.push_back(std::move(*frame));
+            return frames;
+        }
+
+        double duration = static_cast<double>(impl_->formatContext->duration) / AV_TIME_BASE;
+
+        int counter = 0;
+        double seconds = 0.0;
+
+        while (seconds < duration) {
+            std::optional<Frame> frame = impl_->extractFrame(seconds, error);
+
+            if (!frame) {
+                return std::nullopt; // `*error` already set by extractFrame.
+            }
+
+            frames.push_back(std::move(*frame));
+
+            // Uniform sampling.
+            counter++;
+            seconds = static_cast<double>(counter) * interval;
+        }
+
+        return frames;
     }
+
+
 } // thumbbuddy
