@@ -261,6 +261,11 @@ namespace thumbbuddy {
             return std::nullopt;
         }
 
+        // 10-bit to 8-bit must be the same on every platform. By default swscale picks a SIMD path per CPU, and the paths
+        // round differently, so macOS (ARM) and Linux (x86) could produce different pixels and different scores.
+        // BITEXACT forces one reference path, and ACCURATE_RND makes it round correctly rather than approximately.
+        scalerContext->flags = SWS_BITEXACT | SWS_ACCURATE_RND;
+
         auto impl = std::make_unique<Impl>();
         impl->formatContext = std::move(formatContext);
         impl->streamIndex = streamIndex;
