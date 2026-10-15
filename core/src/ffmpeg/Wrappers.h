@@ -12,6 +12,7 @@
 extern "C" {
     #include <libavformat/avformat.h>
     #include <libavcodec/avcodec.h>
+    #include <libswscale/swscale.h>
 }
 
 namespace thumbbuddy::ffmpeg {
@@ -39,10 +40,17 @@ namespace thumbbuddy::ffmpeg {
         }
     };
 
+    struct ScalerContextDeleter {
+        void operator()(SwsContext *ctx) const {
+            sws_free_context(&ctx);
+        }
+    };
+
     using FormatContextPtr = std::unique_ptr<AVFormatContext, FormatContextDeleter>;
     using CodecContextPtr = std::unique_ptr<AVCodecContext, CodecContextDeleter>;
     using FramePtr = std::unique_ptr<AVFrame, FrameDeleter>;
     using PacketPtr = std::unique_ptr<AVPacket, PacketDeleter>;
+    using ScalerContextPtr = std::unique_ptr<SwsContext, ScalerContextDeleter>;
 
     [[nodiscard]] FormatContextPtr openInput(const std::filesystem::path &path, std::string *error);
 

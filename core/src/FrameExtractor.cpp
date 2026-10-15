@@ -8,11 +8,6 @@
 #include <thumbbuddy/FrameExtractor.h>
 #include "ffmpeg/Wrappers.h"
 
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-}
-
 namespace {
     enum class ReceiveResult {
         found,      // Frame now holds the target frame.
@@ -26,6 +21,7 @@ namespace thumbbuddy {
     struct FrameExtractor::Impl {
         ffmpeg::FormatContextPtr formatContext;
         ffmpeg::CodecContextPtr decoderContext;
+        ffmpeg::ScalerContextPtr scalerContext;
         int streamIndex {};
 
         std::optional<Frame> convert(AVFrame *decoded, std::string *error) {
@@ -59,7 +55,25 @@ namespace thumbbuddy {
             // Resize so the vector owns the memory before the scaler writes into it.
             imageBuffer.pixels.resize(stride * static_cast<std::uint32_t>(decoded->height));
 
-            // TODO: Scaling
+            // Setup destination AVFrame.
+            ffmpeg::FramePtr destination { av_frame_alloc() };
+            if (!destination) {
+                *error = "out of memory";
+                return std::nullopt;
+            }
+            destination->format = AV_PIX_FMT_RGBA;
+            destination->color_range = AVCOL_RANGE_JPEG;
+            destination->width = decoded->width;
+            destination->height = decoded->height;
+            destination->data[0] = imageBuffer.pixels.data();
+            destination->linesize[0] = static_cast<int>(stride);
+
+            // Perform pixel scaling.
+            const int scaleResult = sws_scale_frame(scalerContext.get(), destination.get(), decoded);
+            if (scaleResult < 0) {
+                *error = ffmpeg::describeError(scaleResult);
+                return std::nullopt;
+            }
 
             // TODO: Color
 
@@ -218,10 +232,18 @@ namespace thumbbuddy {
             return std::nullopt;
         }
 
+        // Create an empty scaler context.
+        ffmpeg::ScalerContextPtr scalerContext { sws_alloc_context() };
+        if (!scalerContext) {
+            *error = "out of memory";
+            return std::nullopt;
+        }
+
         auto impl = std::make_unique<Impl>();
         impl->formatContext = std::move(formatContext);
         impl->streamIndex = streamIndex;
         impl->decoderContext = std::move(decoderContext);
+        impl->scalerContext = std::move(scalerContext);
 
         return FrameExtractor { std::move(impl) };
     }
