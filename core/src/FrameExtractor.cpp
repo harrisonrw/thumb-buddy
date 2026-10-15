@@ -8,6 +8,10 @@
 #include <thumbbuddy/FrameExtractor.h>
 #include "ffmpeg/Wrappers.h"
 
+extern "C" {
+    #include <libavutil/pixdesc.h>
+}
+
 namespace {
     enum class ReceiveResult {
         found,      // Frame now holds the target frame.
@@ -23,6 +27,24 @@ namespace thumbbuddy {
         ffmpeg::CodecContextPtr decoderContext;
         ffmpeg::ScalerContextPtr scalerContext;
         int streamIndex {};
+
+        // Some codecs decode to RGB (PNG-in-MOV, QuickTime Animation, some ProRes 4444), which has no YUV matrix or
+        // limited range, so the defaults only apply to YUV.
+        static void applyColorDefaults(AVFrame *frame) {
+            const AVPixFmtDescriptor *descriptor = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(frame->format));
+            if (descriptor && (descriptor->flags & AV_PIX_FMT_FLAG_RGB)) {
+                // is RGB.
+                return;
+            }
+
+            // Fill in missing color space and range on the decoded frame.
+            if (frame->colorspace == AVCOL_SPC_UNSPECIFIED) {
+                frame->colorspace = frame->height >= 720 ? AVCOL_SPC_BT709 : AVCOL_SPC_SMPTE170M;
+            }
+            if (frame->color_range == AVCOL_RANGE_UNSPECIFIED) {
+                frame->color_range = AVCOL_RANGE_MPEG;
+            }
+        }
 
         std::optional<Frame> convert(AVFrame *decoded, std::string *error) {
             // Compute the timestamp (in the frame's own time).
@@ -55,6 +77,8 @@ namespace thumbbuddy {
             // Resize so the vector owns the memory before the scaler writes into it.
             imageBuffer.pixels.resize(stride * static_cast<std::uint32_t>(decoded->height));
 
+            applyColorDefaults(decoded);
+
             // Setup destination AVFrame.
             ffmpeg::FramePtr destination { av_frame_alloc() };
             if (!destination) {
@@ -74,8 +98,6 @@ namespace thumbbuddy {
                 *error = ffmpeg::describeError(scaleResult);
                 return std::nullopt;
             }
-
-            // TODO: Color
 
             return Frame {frameTimestamp, std::move(imageBuffer) };
         }
