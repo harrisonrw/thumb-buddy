@@ -3,13 +3,16 @@
 //
 
 #include <iostream>
+#include <filesystem>
 #include <span>
 #include <string>
 #include <string_view>
+#include <format>
 #include <thumbbuddy/FrameCandidate.h>
 #include <thumbbuddy/Version.h>
 #include <thumbbuddy/FrameExtractor.h>
 #include <thumbbuddy/Frame.h>
+#include <thumbbuddy/ImageWriter.h>
 #include <thumbbuddy/MediaReader.h>
 #include <thumbbuddy/Logging.h>
 #include <Options.h>
@@ -22,6 +25,7 @@ static int showHelp() {
     std::cout << "-h, --help             Print this help" << "\n";
     std::cout << "-v, --version          Output the version number" << "\n";
     std::cout << "-i, --info <path>      Output metadata for file" << "\n";
+    std::cout << "-o, --output <dir>     Directory for PNGs (default: same as video)" << "\n";
 
     return 0;
 }
@@ -74,13 +78,31 @@ static int showInfo(const std::vector<std::string_view>& inputs) {
     return 0;
 }
 
-static int extractFrames(const std::vector<std::string_view>& inputs) {
+static int extractFrames(const std::vector<std::string_view>& inputs, const std::optional<std::string>& outputDirectory) {
     if (inputs.empty()) {
         std::cerr << "thumbbuddy: requires a path" << "\n";
         return 2;
     }
 
     const std::string path { inputs.front() };
+    const std::filesystem::path inputPath { path };               // "/Users/robert/video/skiing.mp4"
+
+    std::filesystem::path directory = outputDirectory
+        ? std::filesystem::path { outputDirectory.value() }  // "/Users/robert/some_directory"
+        : inputPath.parent_path();                               // "/Users/robert/video"
+
+    const std::string stem = inputPath.stem().string(); // "skiing"
+
+    // Convert an empty path into the current directory.
+    if (directory.empty()) {
+        directory = ".";
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::is_directory(directory, ec)) {
+        std::cerr << "thumbbuddy: " << directory.string() << ": not a directory" << "\n";
+        return 1;
+    }
 
     std::string error;
     std::optional<thumbbuddy::FrameExtractor> frameExtractor = thumbbuddy::FrameExtractor::open(path, &error);
@@ -97,11 +119,25 @@ static int extractFrames(const std::vector<std::string_view>& inputs) {
 
     std::cout << "Extracted Frames: " << frames->size() << "\n";
 
-    for (const thumbbuddy::Frame &frame : *frames) {
+    const std::size_t numDigits = std::to_string(frames->size()).size(); // 12 frames -> 2 digits
+
+    int writeResult = 0;
+    for (std::size_t index = 1; const thumbbuddy::Frame &frame : *frames) {
         std::cout << "Frame : " << thumbbuddy::cli::formatDuration(frame.timestamp) << "\n";
+        
+        const std::string filename = std::format("{}-{:0{}}.png", stem, index, numDigits); // "skiing-01.png"
+        const std::filesystem::path outputPath = directory / filename;
+
+        std::string writeError;
+        if (!thumbbuddy::ImageWriter::writePNG(frame.image, outputPath, &writeError)) {
+            std::cerr << "thumbbuddy: " << outputPath.string() << ": " << writeError << "\n";
+            writeResult = 1;
+        }
+
+        index++;
     }
 
-    return 0;
+    return writeResult;
 }
 
 int main(int argc, char* argv[]) {
@@ -124,7 +160,7 @@ int main(int argc, char* argv[]) {
         case thumbbuddy::cli::Mode::info:
             return showInfo(options.inputs);
         case thumbbuddy::cli::Mode::run:
-            return extractFrames(options.inputs);
+            return extractFrames(options.inputs, options.outputDirectory);
     }
 
     return 0;

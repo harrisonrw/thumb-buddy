@@ -1,6 +1,7 @@
 add_executable(
         thumbbuddy_cli_tests
         FormatTest.cpp
+        OptionsTest.cpp
 )
 
 target_link_libraries(

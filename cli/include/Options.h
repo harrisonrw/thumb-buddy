@@ -22,6 +22,7 @@ namespace thumbbuddy::cli {
     struct Options {
         Mode mode { Mode::run };
         std::vector<std::string_view> inputs {};
+        std::optional<std::string> outputDirectory {};
         std::optional<std::string> error {};
     };
 

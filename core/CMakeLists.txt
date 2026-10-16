@@ -31,6 +31,7 @@ target_sources(
         thumbbuddy_core
         PRIVATE
         src/ffmpeg/Wrappers.cpp
+        src/ImageWriter.cpp
         src/FrameAnalyzer.cpp
         src/FrameExtractor.cpp
         src/ThumbnailGenerator.cpp
@@ -48,6 +49,7 @@ target_sources(
         include/thumbbuddy/Frame.h
         include/thumbbuddy/FrameRate.h
         include/thumbbuddy/ImageBuffer.h
+        include/thumbbuddy/ImageWriter.h
         include/thumbbuddy/FrameExtractor.h
         include/thumbbuddy/MediaInfo.h
         include/thumbbuddy/MediaType.h

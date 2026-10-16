@@ -29,6 +29,15 @@ namespace thumbbuddy::cli {
                 wantsVersion = true;
             } else if (arg == "--info" || arg == "-i") {
                 wantsInfo = true;
+            } else if (arg == "--output" || arg == "-o") {
+                const std::size_t nextIndex = i + 1;
+                if (nextIndex < args.size()) {
+                    options.outputDirectory = args[nextIndex];
+                    i += 1; // so the value isn't added to inputs as well.
+                } else {
+                    options.error = "option '--output' requires a directory";
+                    return options;
+                }
             } else if (arg.size() > 1 && arg.starts_with('-')) {
                 // A lone "-" conventionally means stdin, so only longer tokens are flags.
                 options.error = "unrecognized option '" + std::string { arg } + "'";
