@@ -105,12 +105,18 @@ namespace thumbbuddy {
         ReceiveResult receiveUntil(AVFrame *frame, AVFrame *lastFrame, std::int64_t target, std::string *error) {
             int result;
             while ((result = avcodec_receive_frame(decoderContext.get(), frame)) == 0) {
-                if (frame->best_effort_timestamp >= target) {
-                    return ReceiveResult::found;
+                if (frame->best_effort_timestamp < target) {
+                    // Before the target. So keep it, since it is the frame on screen if the next one is past the target.
+                    av_frame_unref(lastFrame);
+                    av_frame_move_ref(lastFrame, frame);
+                    continue;
                 }
-                // Too early, so keep it in case it turns out to be the last frame.
-                av_frame_unref(lastFrame);
-                av_frame_move_ref(lastFrame, frame);
+                if (frame->best_effort_timestamp > target && lastFrame->buf[0] != nullptr) {
+                    // Past the target. So use the last frame.
+                    av_frame_unref(frame);
+                    av_frame_move_ref(frame, lastFrame);
+                }
+                return ReceiveResult::found;
             }
 
             if (result == AVERROR(EAGAIN)) {
@@ -261,10 +267,11 @@ namespace thumbbuddy {
             return std::nullopt;
         }
 
-        // 10-bit to 8-bit must be the same on every platform. By default swscale picks a SIMD path per CPU, and the paths
-        // round differently, so macOS (ARM) and Linux (x86) could produce different pixels and different scores.
-        // BITEXACT forces one reference path, and ACCURATE_RND makes it round correctly rather than approximately.
-        scalerContext->flags = SWS_BITEXACT | SWS_ACCURATE_RND;
+        // Conversion (including 10-bit to 8-bit) must be the same on every platform. By default swscale picks a SIMD
+        // path per CPU, and the paths can round differently, so macOS (ARM) and Linux (x86) could produce different
+        // pixels and different scores. BITEXACT makes every platform produce identical output.
+        // Not ACCURATE_RND: it switches to a different conversion path that changes color edges by up to 131 levels.
+        scalerContext->flags |= SWS_BITEXACT;
 
         auto impl = std::make_unique<Impl>();
         impl->formatContext = std::move(formatContext);
