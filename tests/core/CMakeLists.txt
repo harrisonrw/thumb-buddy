@@ -19,4 +19,7 @@ target_link_libraries(
         PkgConfig::FFMPEG
 )
 
+target_compile_definitions(thumbbuddy_core_tests PRIVATE
+        THUMBBUDDY_FIXTURES_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures")
+
 gtest_discover_tests(thumbbuddy_core_tests PROPERTIES LABELS core)

@@ -1,0 +1,2 @@
+# Test fixtures are reference inputs; git must never alter their bytes.
+tests/fixtures/** binary
