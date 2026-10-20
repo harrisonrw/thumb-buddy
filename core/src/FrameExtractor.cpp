@@ -267,11 +267,11 @@ namespace thumbbuddy {
             return std::nullopt;
         }
 
-        // Conversion (including 10-bit to 8-bit) must be the same on every platform. By default swscale picks a SIMD
-        // path per CPU, and the paths can round differently, so macOS (ARM) and Linux (x86) could produce different
-        // pixels and different scores. BITEXACT makes every platform produce identical output.
-        // Not ACCURATE_RND: it switches to a different conversion path that changes color edges by up to 131 levels.
-        scalerContext->flags |= SWS_BITEXACT;
+        // F6: conversion must be identical on every platform. For 8-bit 4:2:0 to RGB, swscale normally uses a
+        // hand-written SSSE3 (x86) or NEON (ARM) converter, and those round differently. ACCURATE_RND turns
+        // both off, so every CPU uses the general conversion path, and BITEXACT makes that path identical
+        // everywhere. 10-bit input always takes the general path.
+        scalerContext->flags |= SWS_BITEXACT | SWS_ACCURATE_RND;
 
         auto impl = std::make_unique<Impl>();
         impl->formatContext = std::move(formatContext);

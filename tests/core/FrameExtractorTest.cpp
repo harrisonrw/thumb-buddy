@@ -75,7 +75,7 @@ TEST(FrameExtractor, Fixture8BitPixelHash) {
     EXPECT_EQ(frameZero.image.width, 320u);
     EXPECT_EQ(frameZero.image.height, 240u);
 
-    EXPECT_EQ(hashFrames(*frames), 13867570260360690388ull) << "fixture-8bit.mp4 pixels changed: swscale output differs on this platform";
+    EXPECT_EQ(hashFrames(*frames), 16241136530502737322ull) << "fixture-8bit.mp4 pixels changed: swscale output differs on this platform";
 }
 
 TEST(FrameExtractor, Fixture10BitPixelHash) {
