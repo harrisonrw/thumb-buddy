@@ -14,7 +14,7 @@ extern "C" {
 
 namespace {
     enum class ReceiveResult {
-        found,      // Frame now holds the target frame.
+        found,      // Frame now holds the frame on screen at the target (see receiveUntil).
         needsInput, // Decoder wants another packet (EAGAIN).
         finished,   // Decoder is fully drained (EOF).
         failed      // An actual error. `*error` is set.
@@ -28,12 +28,20 @@ namespace thumbbuddy {
         ffmpeg::ScalerContextPtr scalerContext;
         int streamIndex {};
 
-        // Some codecs decode to RGB (PNG-in-MOV, QuickTime Animation, some ProRes 4444), which has no YUV matrix or
-        // limited range, so the defaults only apply to YUV.
+        // The frame's presentation time in stream ticks.
+        // best_effort_timestamp if provided by decoder, otherwise fallback to pts.
+        static std::int64_t frameTicks(const AVFrame *frame) {
+            if (frame->best_effort_timestamp != AV_NOPTS_VALUE) {
+                return frame->best_effort_timestamp;
+            }
+            return frame->pts;
+        }
+
+        // Some codecs decode to RGB (PNG-in-MOV, QuickTime Animation, some ProRes 4444),
+        // which has no YUV matrix or limited range, so the defaults only apply to YUV.
         static void applyColorDefaults(AVFrame *frame) {
             const AVPixFmtDescriptor *descriptor = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(frame->format));
             if (descriptor && (descriptor->flags & AV_PIX_FMT_FLAG_RGB)) {
-                // is RGB.
                 return;
             }
 
@@ -47,13 +55,9 @@ namespace thumbbuddy {
         }
 
         std::optional<Frame> convert(AVFrame *decoded, std::string *error) {
-            // Compute the timestamp (in the frame's own time).
+            // Compute the timestamp (in the frame's own time). receiveUntil has already rejected frames without one.
             AVStream *stream = formatContext->streams[streamIndex];
-            std::int64_t timestamp = decoded->best_effort_timestamp;
-            if (timestamp == AV_NOPTS_VALUE) {
-                // best effort is unknown, so fallback to pts.
-                timestamp = decoded->pts;
-            }
+            std::int64_t timestamp = frameTicks(decoded);
 
             if (stream->start_time != AV_NOPTS_VALUE) {
                 // start time known, so subtract it
@@ -102,20 +106,31 @@ namespace thumbbuddy {
             return Frame {frameTimestamp, std::move(imageBuffer) };
         }
 
-        ReceiveResult receiveUntil(AVFrame *frame, AVFrame *lastFrame, std::int64_t target, std::string *error) {
+        // Receives decoded frames until it can return the frame on screen at targetTicks:
+        //   - a frame exactly at the target is returned
+        //   - otherwise the latest frame before the target is returned, once the next frame passes it
+        //   - a target before the first frame returns the first frame
+        // Frames before the target are kept in lastFrame, each replacing the previous one.
+        ReceiveResult receiveUntil(AVFrame *frame, AVFrame *lastFrame, std::int64_t targetTicks, std::string *error) {
             int result;
             while ((result = avcodec_receive_frame(decoderContext.get(), frame)) == 0) {
-                if (frame->best_effort_timestamp < target) {
-                    // Before the target. So keep it, since it is the frame on screen if the next one is past the target.
+                const std::int64_t ticks = frameTicks(frame);
+                if (ticks == AV_NOPTS_VALUE) {
+                    *error = "decoded frame has no timestamp";
+                    return ReceiveResult::failed;
+                }
+                if (ticks < targetTicks) {
+                    // Before the target: keep it, since it is the frame on screen if the next one is past the target.
                     av_frame_unref(lastFrame);
                     av_frame_move_ref(lastFrame, frame);
                     continue;
                 }
-                if (frame->best_effort_timestamp > target && lastFrame->buf[0] != nullptr) {
-                    // Past the target. So use the last frame.
+                if (ticks > targetTicks && lastFrame->buf[0] != nullptr) {
+                    // Past the target: we want the latest frame at or before the target, which is the kept one.
                     av_frame_unref(frame);
                     av_frame_move_ref(frame, lastFrame);
                 }
+                // Exactly on the target, swapped above, or past it with no earlier frame (target before the first frame).
                 return ReceiveResult::found;
             }
 
@@ -133,14 +148,17 @@ namespace thumbbuddy {
         std::optional<Frame> extractFrame(double seconds, std::string *error) {
             AVStream *stream = formatContext->streams[streamIndex];
 
-            // Convert seconds into stream timebase units.
-            std::int64_t target = std::llround(seconds / av_q2d(stream->time_base));
+            // Convert seconds into stream ticks (time_base units).
+            std::int64_t targetTicks = std::llround(seconds / av_q2d(stream->time_base));
             if (stream->start_time != AV_NOPTS_VALUE) {
-                target += stream->start_time;
+                // Offset by start_time, so 0 seconds is always the first frame, even if the stream starts later.
+                targetTicks += stream->start_time;
             }
 
-            // Seek.
-            int seekResult = av_seek_frame(formatContext.get(), streamIndex, target, AVSEEK_FLAG_BACKWARD);
+            // Seek back to the keyframe at or before the target.
+            // Decoding has to start at a keyframe.
+            // One seek per sample keeps the work per frame to one keyframe interval.
+            int seekResult = av_seek_frame(formatContext.get(), streamIndex, targetTicks, AVSEEK_FLAG_BACKWARD);
             if (seekResult < 0) {
                 *error = ffmpeg::describeError(seekResult);
                 return std::nullopt;
@@ -173,7 +191,7 @@ namespace thumbbuddy {
                     }
 
                     // Receive decoded frame.
-                    receiveResult = receiveUntil(frame.get(), lastFrame.get(), target, error);
+                    receiveResult = receiveUntil(frame.get(), lastFrame.get(), targetTicks, error);
 
                     if (receiveResult == ReceiveResult::found) {
                         return convert(frame.get(), error);
@@ -195,7 +213,7 @@ namespace thumbbuddy {
             if (receiveResult == ReceiveResult::needsInput) {
                 // Drain to get the final frame.
                 avcodec_send_packet(decoderContext.get(), nullptr);
-                receiveResult = receiveUntil(frame.get(), lastFrame.get(), target, error);
+                receiveResult = receiveUntil(frame.get(), lastFrame.get(), targetTicks, error);
             }
 
             if (receiveResult == ReceiveResult::found) {

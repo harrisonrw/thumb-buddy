@@ -19,6 +19,8 @@ namespace thumbbuddy {
         FrameExtractor(FrameExtractor &&) noexcept;
         FrameExtractor &operator=(FrameExtractor &&) noexcept;
 
+        // Extracts one frame every `interval` seconds, starting at 0 and stopping before the end of the video.
+        // For example, an interval of 5 on a 12-second video samples at 0, 5 and 10 seconds.
         [[nodiscard]] std::optional<std::vector<Frame>> extractFrames(double interval, std::string *error);
 
     private:
