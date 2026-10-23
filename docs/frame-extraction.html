@@ -1,0 +1,353 @@
+<!doctype html>
+<!--
+  Frame extraction flow: the source for frame-extraction.pdf.
+  Regenerate the PDF after editing (macOS, from the repository root):
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-pdf-header-footer \
+      --virtual-time-budget=8000 --print-to-pdf=docs/frame-extraction.pdf "file://$PWD/docs/frame-extraction.html"
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thumb Buddy Frame Extraction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one reading column; primer as a two-column grid; each figure scrolls sideways on its own when narrow. */
+  :root {
+    --bg: #f4f6f7;
+    --surface: #ffffff;
+    --band: #eaeef0;
+    --fg: #1b2329;
+    --muted: #5b6770;
+    --line: #b9c3c9;
+    --accent: #0b7a83;
+    --accent-soft: #dff0f1;
+    --example: #9a5600;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-code: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12171b; --surface: #1a2127; --band: #161c21; --fg: #e3e8eb; --muted: #93a1aa;
+      --line: #3a4852; --accent: #4fc3cc; --accent-soft: #173a3e; --example: #e2a95c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12171b; --surface: #1a2127; --band: #161c21; --fg: #e3e8eb; --muted: #93a1aa;
+    --line: #3a4852; --accent: #4fc3cc; --accent-soft: #173a3e; --example: #e2a95c; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+  main { max-width: 960px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: grid; gap: 40px; }
+  header { display: grid; gap: 8px; }
+  .eyebrow { font-family: var(--font-code); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0; }
+  h1 { font-size: 28px; line-height: 1.2; font-weight: 600; margin: 0; text-wrap: balance; }
+  h2 { font-size: 18px; font-weight: 600; margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  code { font-family: var(--font-code); font-size: 0.9em; }
+  .ex { color: var(--example); font-weight: 500; }
+  .clip { margin: 0; padding-left: 1.25em; display: grid; gap: 2px; }
+
+  section { display: grid; gap: 14px; min-width: 0; }
+  .primer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; margin: 0; }
+  .primer div { display: grid; gap: 2px; min-width: 0; }
+  .primer dt { font-weight: 600; }
+  .primer dd { margin: 0; color: var(--muted); }
+
+  figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+  .scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+  svg { display: block; width: 100%; min-width: 680px; height: auto; color: var(--fg); font-family: var(--font-body); }
+  figcaption { color: var(--muted); font-size: 14px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13px; color: var(--muted); margin: 0; padding: 0; list-style: none; }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .swatch { display: inline-block; width: 28px; height: 0; border-top: 2px solid var(--accent); }
+  .swatch.dash { border-top: 2px dashed var(--muted); }
+  .swatch.text { width: auto; height: auto; border: 0; color: var(--example); font-weight: 600; font-size: 12px; }
+
+  /* Diagram vocabulary, shared by both figures. */
+  .band { fill: var(--band); }
+  .t-band { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; fill: var(--muted); }
+  .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.25; }
+  .box-key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .box-side { fill: var(--surface); stroke: var(--line); stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .t-title { font-size: 13.5px; font-weight: 600; fill: currentColor; }
+  .t-api { font-family: var(--font-code); font-size: 11.5px; fill: var(--muted); }
+  .t-ex { font-size: 12px; font-weight: 500; fill: var(--example); }
+  .t-edge { font-size: 11.5px; fill: var(--muted); }
+  .t-type { font-family: var(--font-code); font-size: 11.5px; fill: currentColor; }
+  .t-accent { font-size: 11.5px; fill: var(--accent); font-weight: 600; }
+  .edge { fill: none; stroke: currentColor; stroke-width: 1.25; }
+  .edge-dash { fill: none; stroke: var(--muted); stroke-width: 1.25; stroke-dasharray: 5 4; }
+  .edge-accent { fill: none; stroke: var(--accent); stroke-width: 1.75; }
+  .head { fill: currentColor; }
+  .head-muted { fill: var(--muted); }
+  .head-accent { fill: var(--accent); }
+  .axis { stroke: var(--line); stroke-width: 1.25; }
+  .frame { fill: var(--surface); stroke: var(--line); stroke-width: 1.25; }
+  .frame-ret { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .frame-trig { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+  .frame-skip { fill: none; stroke: var(--line); stroke-width: 1.25; stroke-dasharray: 4 4; }
+  .t-frame { font-family: var(--font-code); font-size: 12px; fill: currentColor; }
+  .t-frame-muted { font-family: var(--font-code); font-size: 12px; fill: var(--muted); }
+  .target { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+  .details { margin: 0; display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); gap: 12px 20px; }
+  .details dt { font-weight: 600; }
+  .details dd { margin: 0; color: var(--muted); }
+  @media (max-width: 600px) {
+    .primer, .details { grid-template-columns: minmax(0, 1fr); }
+    .details { gap: 2px; }
+    .details dd { margin-bottom: 12px; }
+    h1 { font-size: 24px; }
+  }
+  body { margin: 0; }
+
+  /* Print layout used to generate frame-extraction.pdf: light theme, Letter pages, one figure per page. */
+  @page { size: Letter; margin: 0.6in 0.6in 0.7in; }
+  @media print {
+    :root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+      --bg: #ffffff; --surface: #ffffff; --band: #eaeef0; --fg: #1b2329; --muted: #5b6770;
+      --line: #b9c3c9; --accent: #0b7a83; --accent-soft: #dff0f1; --example: #9a5600; color-scheme: light;
+    }
+    body { font-size: 12.5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    main { max-width: none; padding: 0; gap: 26px; }
+    .scroll { overflow: visible; padding: 10px; }
+    svg { min-width: 0; }
+    figure, header, .primer, .details > * { break-inside: avoid; }
+    h2 { break-after: avoid; }
+    #flow-title, section[aria-labelledby="pick-title"] { break-before: page; }
+    .primer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .details { grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">thumb-buddy · core/src/FrameExtractor.cpp</p>
+    <h1>Frame extraction flow</h1>
+    <p>This document shows how Thumb Buddy extracts frames from a video at regular intervals and converts each one to an RGBA image. To illustrate the steps, the <span class="ex">orange notes</span> follow one request all the way through:</p>
+    <ul class="clip">
+      <li>Test clip: <code>tests/fixtures/fixture-8bit.mp4</code></li>
+      <li>Requested time: 0.5 s</li>
+      <li>Frame rate: 25 fps</li>
+      <li>Resolution: 320×240</li>
+    </ul>
+  </header>
+
+  <section aria-labelledby="primer-title">
+    <h2 id="primer-title">Terms used in the diagram</h2>
+    <dl class="primer">
+      <div>
+        <dt>Packet and frame</dt>
+        <dd>A video file stores compressed <em>packets</em>. The decoder turns packets into <em>frames</em>, which are complete images in YUV color.</dd>
+      </div>
+      <div>
+        <dt>Keyframe</dt>
+        <dd>A frame that can be decoded on its own. Other frames are stored as changes from earlier frames, so decoding has to start at a keyframe and work forward.</dd>
+      </div>
+      <div>
+        <dt>Ticks</dt>
+        <dd>The integer clock a video stream uses for timestamps. In the test clip, one tick is 1/12800 s, so 0.5 s is 6400 ticks.</dd>
+      </div>
+      <div>
+        <dt>Flushing the decoder</dt>
+        <dd>A decoder holds back a few frames while it waits for more input. At the end of the file, you have to tell it there is no more input. It then returns the frames it was holding.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section aria-labelledby="flow-title">
+    <h2 id="flow-title">One sample time, start to finish</h2>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 960 950" role="img" aria-label="Three phases. Find the position: pick a sample time t in seconds, convert it to ticks, and jump back to the nearest keyframe. Decode until the right frame: read compressed packets, feed them to the decoder, and collect decoded frames until one passes t, looping while the decoder needs more data and flushing it at end of file. Convert: turn the chosen YUV frame into an RGBA image and add it to the results, then move to the next sample time. In the example, 0.5 seconds becomes 6400 ticks, decoding starts at the keyframe at 0.00, and the frame at 0.48 is returned as a 320 by 240 RGBA image.">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="head"/>
+            </marker>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="head-muted"/>
+            </marker>
+            <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="head-accent"/>
+            </marker>
+          </defs>
+
+          <!-- Phase bands -->
+          <rect class="band" x="16" y="8" width="928" height="340" rx="6"/>
+          <text class="t-band" x="50" y="30">1 · FIND THE POSITION</text>
+          <rect class="band" x="16" y="358" width="928" height="340" rx="6"/>
+          <text class="t-band" x="50" y="380">2 · DECODE UNTIL THE RIGHT FRAME</text>
+          <rect class="band" x="16" y="708" width="928" height="232" rx="6"/>
+          <text class="t-band" x="50" y="730">3 · CONVERT</text>
+
+          <!-- Phase 1. Main column: x 260 to 600, centre 430 -->
+          <rect class="box" x="260" y="42" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="66" text-anchor="middle">Pick the next sample time</text>
+          <text class="t-api" x="430" y="84" text-anchor="middle">extractFrames(interval)</text>
+          <text class="t-ex" x="430" y="101" text-anchor="middle">samples at 0 and 0.5 s · this pass: t = 0.5 s</text>
+
+          <rect class="box" x="260" y="152" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="176" text-anchor="middle">Convert seconds to ticks</text>
+          <text class="t-api" x="430" y="194" text-anchor="middle">time_base, start_time</text>
+          <text class="t-ex" x="430" y="211" text-anchor="middle">0.5 s × 12800 = 6400 ticks</text>
+
+          <rect class="box" x="260" y="262" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="286" text-anchor="middle">Jump back to the nearest keyframe</text>
+          <text class="t-api" x="430" y="304" text-anchor="middle">av_seek_frame · avcodec_flush_buffers</text>
+          <text class="t-ex" x="430" y="321" text-anchor="middle">lands on the keyframe at 0.00 s</text>
+
+          <!-- Phase 2 -->
+          <rect class="box" x="260" y="392" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="416" text-anchor="middle">Read the next compressed packet</text>
+          <text class="t-api" x="430" y="434" text-anchor="middle">av_read_frame</text>
+          <text class="t-ex" x="430" y="451" text-anchor="middle">packets for 0.00, 0.04, 0.08 s …</text>
+
+          <rect class="box" x="260" y="502" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="526" text-anchor="middle">Feed it to the decoder</text>
+          <text class="t-api" x="430" y="544" text-anchor="middle">avcodec_send_packet</text>
+          <text class="t-ex" x="430" y="561" text-anchor="middle">audio and other streams are skipped</text>
+
+          <rect class="box-key" x="260" y="612" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="636" text-anchor="middle">Collect frames until one passes t</text>
+          <text class="t-api" x="430" y="654" text-anchor="middle">receiveUntil · see the next figure</text>
+          <text class="t-ex" x="430" y="671" text-anchor="middle">0.00 … 0.48 kept · 0.52 passes t → use 0.48</text>
+
+          <!-- Phase 3 -->
+          <rect class="box" x="260" y="742" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="766" text-anchor="middle">Convert YUV to RGBA</text>
+          <text class="t-api" x="430" y="784" text-anchor="middle">convert · sws_scale_frame</text>
+          <text class="t-ex" x="430" y="801" text-anchor="middle">320×240 YUV → 320×240 RGBA, 4 bytes per pixel</text>
+
+          <rect class="box" x="260" y="852" width="340" height="70" rx="4"/>
+          <text class="t-title" x="430" y="876" text-anchor="middle">Add the frame to the results</text>
+          <text class="t-api" x="430" y="894" text-anchor="middle">Frame { timestamp, image }</text>
+          <text class="t-ex" x="430" y="911" text-anchor="middle">timestamp 0.48 s, not 0.5 s</text>
+
+          <!-- Straight-down edges, labelled with what moves along them -->
+          <line class="edge" x1="430" y1="112" x2="430" y2="150" marker-end="url(#arrow)"/>
+          <text class="t-type" x="440" y="136">t (seconds)</text>
+          <line class="edge" x1="430" y1="222" x2="430" y2="260" marker-end="url(#arrow)"/>
+          <text class="t-type" x="440" y="246">target (ticks)</text>
+          <line class="edge" x1="430" y1="332" x2="430" y2="390" marker-end="url(#arrow)"/>
+          <text class="t-type" x="440" y="366">file position</text>
+          <line class="edge" x1="430" y1="462" x2="430" y2="500" marker-end="url(#arrow)"/>
+          <text class="t-type" x="440" y="486">AVPacket (compressed)</text>
+          <line class="edge" x1="430" y1="572" x2="430" y2="610" marker-end="url(#arrow)"/>
+          <text class="t-type" x="440" y="596">AVFrame (YUV), one at a time</text>
+          <line class="edge-accent" x1="430" y1="682" x2="430" y2="740" marker-end="url(#arrow-accent)"/>
+          <text class="t-type" x="440" y="708">AVFrame (YUV) on screen at t</text>
+          <line class="edge-accent" x1="430" y1="812" x2="430" y2="850" marker-end="url(#arrow-accent)"/>
+          <text class="t-type" x="440" y="836">Frame (RGBA)</text>
+
+          <!-- Inner loop: decoder needs more data -->
+          <path class="edge" d="M260,647 H210 V427 H258" marker-end="url(#arrow)"/>
+          <text class="t-edge" x="202" y="530" text-anchor="end">decoder needs</text>
+          <text class="t-edge" x="202" y="545" text-anchor="end">more data</text>
+
+          <!-- Outer loop: next sample time -->
+          <path class="edge" d="M260,887 H34 V77 H258" marker-end="url(#arrow)"/>
+          <text class="t-edge" x="147" y="879" text-anchor="middle">next sample time</text>
+
+          <!-- End of file: flush -->
+          <rect class="box" x="680" y="502" width="220" height="70" rx="4"/>
+          <text class="t-title" x="790" y="526" text-anchor="middle">Flush the decoder</text>
+          <text class="t-api" x="790" y="544" text-anchor="middle">send a null packet</text>
+          <text class="t-ex" x="790" y="561" text-anchor="middle">only near the end of a video</text>
+          <path class="edge" d="M600,427 H790 V500" marker-end="url(#arrow)"/>
+          <text class="t-edge" x="700" y="419" text-anchor="middle">end of file</text>
+          <path class="edge" d="M790,572 V647 H602" marker-end="url(#arrow)"/>
+          <text class="t-edge" x="800" y="606">frames it held back</text>
+
+          <!-- CLI consumer -->
+          <rect class="box-side" x="680" y="852" width="220" height="70" rx="4"/>
+          <text class="t-title" x="790" y="876" text-anchor="middle">Write a PNG (CLI)</text>
+          <text class="t-api" x="790" y="894" text-anchor="middle">ImageWriter::writePNG</text>
+          <text class="t-ex" x="790" y="911" text-anchor="middle">fixture-8bit-2.png</text>
+          <line class="edge-dash" x1="600" y1="887" x2="678" y2="887" marker-end="url(#arrow-muted)"/>
+        </svg>
+      </div>
+      <ul class="legend">
+        <li><span class="swatch" aria-hidden="true"></span>Path taken once the right frame is found</li>
+        <li><span class="swatch dash" aria-hidden="true"></span>Outside FrameExtractor</li>
+        <li><span class="swatch text" aria-hidden="true">0.48</span>Worked example: 0.5 s in the test clip</li>
+      </ul>
+      <figcaption>Each sample time gets its own seek. This means the work per frame depends on the distance between keyframes, not on the length of the video. Any step can fail. A failure returns no frame and an error message. Failure paths are left out of the diagram to keep it readable.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="pick-title">
+    <h2 id="pick-title">Which frame is returned</h2>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 840 220" role="img" aria-label="On a 25 fps stream there is no frame at 0.50 seconds. Frames at 0.36, 0.40 and 0.44 each replace the kept frame; the frame at 0.52 is the first past the requested time, so the kept frame at 0.48 is returned. The frame at 0.56 is never decoded.">
+          <defs>
+            <marker id="arrow-accent-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" class="head-accent"/>
+            </marker>
+          </defs>
+
+          <!-- Time axis: x = 80 + (t − 0.36) × 3400 -->
+          <line class="axis" x1="40" y1="150" x2="800" y2="150"/>
+
+          <rect class="frame" x="52" y="98" width="56" height="36" rx="3"/>
+          <text class="t-frame" x="80" y="121" text-anchor="middle">0.36</text>
+          <rect class="frame" x="188" y="98" width="56" height="36" rx="3"/>
+          <text class="t-frame" x="216" y="121" text-anchor="middle">0.40</text>
+          <rect class="frame" x="324" y="98" width="56" height="36" rx="3"/>
+          <text class="t-frame" x="352" y="121" text-anchor="middle">0.44</text>
+          <rect class="frame-ret" x="460" y="98" width="56" height="36" rx="3"/>
+          <text class="t-frame" x="488" y="121" text-anchor="middle">0.48</text>
+          <rect class="frame-trig" x="596" y="98" width="56" height="36" rx="3"/>
+          <text class="t-frame" x="624" y="121" text-anchor="middle">0.52</text>
+          <rect class="frame-skip" x="732" y="98" width="56" height="36" rx="3"/>
+          <text class="t-frame-muted" x="760" y="121" text-anchor="middle">0.56</text>
+
+          <line class="axis" x1="80" y1="144" x2="80" y2="156"/>
+          <line class="axis" x1="216" y1="144" x2="216" y2="156"/>
+          <line class="axis" x1="352" y1="144" x2="352" y2="156"/>
+          <line class="axis" x1="488" y1="144" x2="488" y2="156"/>
+          <line class="axis" x1="624" y1="144" x2="624" y2="156"/>
+          <line class="axis" x1="760" y1="144" x2="760" y2="156"/>
+
+          <!-- Requested time -->
+          <line class="target" x1="556" y1="86" x2="556" y2="170"/>
+          <text class="t-accent" x="556" y="188" text-anchor="middle">t = 0.50 s</text>
+
+          <!-- Swap back to the kept frame -->
+          <path class="edge-accent" d="M624,96 C624,56 488,56 488,94" marker-end="url(#arrow-accent-2)"/>
+          <text class="t-accent" x="556" y="50" text-anchor="middle">return the kept frame</text>
+
+          <!-- Annotations -->
+          <text class="t-edge" x="216" y="80" text-anchor="middle">each frame before t replaces the kept frame</text>
+          <text class="t-edge" x="40" y="176">← decoding forward from the keyframe at 0.00</text>
+          <text class="t-edge" x="488" y="206" text-anchor="middle">returned: latest frame ≤ t</text>
+          <text class="t-edge" x="624" y="206" text-anchor="middle">first frame past t</text>
+          <text class="t-edge" x="760" y="176" text-anchor="middle">never decoded</text>
+        </svg>
+      </div>
+      <figcaption>At 25 fps, frames are 0.04 s apart, so there is no frame at exactly 0.50 s. At that moment, a video player is still showing the frame at 0.48 s. Requirement F5 (return the frame on screen at t) says to return that frame. Two edge cases follow the same rule: a frame exactly at t is returned as is, and a t before the first frame returns the first frame. In the code, the kept frame is <code>lastFrame</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="details-title">
+    <h2 id="details-title">Details not shown in the diagram</h2>
+    <dl class="details">
+      <dt>Seconds to ticks</dt>
+      <dd><code>target = llround(t / time_base) + start_time</code>. Adding <code>start_time</code> means t = 0 is always the first frame, even when the stream starts 10 s into its container.</dd>
+      <dt>Frame timestamp</dt>
+      <dd><code>(best_effort_timestamp − start_time) × time_base</code>. If the decoder has no best-effort value, <code>pts</code> is used instead. A frame with neither is an error. The same rule is used when comparing frames with t, and when reporting the timestamp. This is the frame's own time (0.48), not the requested time (0.5).</dd>
+      <dt>Why a seek per sample</dt>
+      <dd>Requirement F7 (sample without decoding the whole video). Seeking to the keyframe before each t means the decoder works through at most one keyframe interval per sample.</dd>
+      <dt>Color defaults</dt>
+      <dd>Requirement F6 (convert color correctly). If a YUV video doesn't specify its color standard, BT.709 is assumed at 720 lines or more and BT.601 below that, both limited range. Values the video does specify are left alone, and so is RGB-coded video.</dd>
+      <dt>Identical on every platform</dt>
+      <dd>Also F6. The scaler sets <code>SWS_BITEXACT | SWS_ACCURATE_RND</code> so x86 and ARM produce the same pixels. <code>SWS_BITEXACT</code> alone is not enough: for 8-bit YUV to RGB, swscale uses CPU-specific converters that only <code>SWS_ACCURATE_RND</code> turns off. Pixel-hash tests on the fixture clips check this in CI.</dd>
+    </dl>
+  </section>
+</main>
+</body>
+</html>
